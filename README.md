@@ -8,13 +8,13 @@ Cert-helper provides step-by-step guidance and automates typical tasks, so you w
 
 Cert-helper is just a bash script, so it should work anywhere with a recent version of bash and OpenSSL. It has no other dependencies.
 
-###1. Get the source files
+### 1. Get the source files
 
 ```
 $ git clone https://github.com/jes-sherborne/cert-helper.git
 ```
 
-###2. Create a directory to hold your certificate files
+### 2. Create a directory to hold your certificate files
 
 Many of the files should be kept secret, so you should keep them somewhere safe. 
 
@@ -22,7 +22,7 @@ If you're just testing, it's fine to just create a directory on your local compu
 
 For more sensitive applications, a good compromise between convenience and security is to create an encrypted volume using something like [VeraCrypt](https://www.veracrypt.fr/en/Downloads.html). You should only mount this volume when you need to create new certificates.
 
-###3. Create your certificate authority
+### 3. Create your certificate authority
 
 Go to the cert-helper directory and type:
 
@@ -34,7 +34,7 @@ You can use cert-helper to create files for local testing or production use.
  
 __Tip:__ Be sure to save the generated passwords in a secure place like a password manager. You will need them to create new certificates and to install your client certificate.
 
-###4. Configure extra security for production systems
+### 4. Configure extra security for production systems
 
 If you are using these certificates in a production system, you should take additional steps to secure your root CA files. Because root CA files can create certificates that are trusted by anyone with the root certificate installed, you don't want them to get into the wrong hands.
 
