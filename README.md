@@ -79,8 +79,8 @@ In any case, to create a new signing CA, all you need to do is provide a name. F
 If you are developing web software and you want to use https connections, it's handy to create a certificate just for your computer. cert-helper can do this for you automatically:
 
 1. Create a directory to hold your local certificates `$ mkdir ~/local-ca`
-2. Choose _Create files for local testing_
-3. Go to the cert-helper directory and type `$ ./cert-helper.sh ~/local-ca`
+2. Go to the cert-helper directory and type `$ ./cert-helper.sh ~/local-ca`
+3. Choose _Create files for local testing_
 4. For the organization, enter your name, your company name, or whatever suits you
 5. Enter your name and email address at the prompts
 
