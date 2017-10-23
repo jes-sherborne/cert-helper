@@ -325,8 +325,8 @@ create_client_cert () {
   fi
   chmod 444 "$signing_ca_dir/certs/$client_file_name.cert.pem"
 
-  client_pfx_password="$(openssl rand -base64 33)"
-  openssl pkcs12 -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -export -in "$signing_ca_dir/certs/$client_file_name.cert.pem" -inkey "$signing_ca_dir/private/$client_file_name.key.pem" -certfile "$signing_ca_dir/certs/ca.cert.pem" -out "$signing_ca_dir/private/$client_file_name.pfx"  -passout file:<( printf "$client_pfx_password" ) -name "$client_name Certificate"
+  client_pfx_password="$(openssl rand -base64 15)"
+  openssl pkcs12 -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -export -in "$signing_ca_dir/certs/$client_file_name.cert.pem" -inkey "$signing_ca_dir/private/$client_file_name.key.pem" -certfile "$signing_ca_dir/certs/ca.cert.pem" -out "$signing_ca_dir/private/$client_file_name.pfx"  -passout file:<( printf "$client_pfx_password" ) -name "$client_name - $org_name"
   if [ ! $? -eq 0 ]; then
     echo "Encountered error and could not continue"
     exit 1
