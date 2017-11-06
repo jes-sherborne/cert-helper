@@ -48,7 +48,7 @@ After you have used cert-helper for the first time, you can use it to create add
 $ ./cert-helper.sh /path/to/cert/directory
 ```
 
-This time, you will get a menu of additional options which enable to create new server certificates, client certificates, and signing CAs.
+This time, you will get a menu of additional options which enable to create new server certificates, client certificates, CSRs, and signing CAs.
 
 ### Creating additional server certificates
 
@@ -61,6 +61,14 @@ You can include as many DNS names and IP addresses as you want. When you're done
 ### Creating additional client certificates
 
 All you need to do is supply the user's name and email address. cert-helper will create the private key and certificate. It will also create a password-protected PFX file that bundles the certificate and key together. You can use this to install the certificate and key on Mac or Windows. See below for instructions.
+
+### A higher-security approach to client and server certificates
+
+In the case described above, cert-helper generates both certificates and the secret keys that go with them. To keep the secret keys secure, it is better to generate the keys where they will be used and create the signed certificate separately.
+
+Cert-helper makes this easy. Just choose to create a client or server CSR and follow the prompts. This will create a tar.gz file with a script and all the necessary supporting files for a client or server. The user can extract the file and run the script. It will create a CSR (Certificate Signing Request) that they can send back to you. When you receive it, run cert-helper again and follow the prompts to created the signed certificate. You can send this certificate back to the user. This way, no secret files are transmitted.
+
+As an additional convenience, the tar.gz bundle contains the root certificate and (for servers) the chain cert that they will need to install and use the final signed certificates.
 
 ### Creating a new signing CA (Advanced)
 
