@@ -173,6 +173,21 @@ get_client_csr (){
 
 }
 
+get_server_csr (){
+  server_file_name=""
+  echo "Make sure the servers's CSR (e.g., 'hostname.example.com.csr.pem') is in the directory $signing_ca_dir/csr"
+  while [ -z "$server_file_name" ]; do
+    read -p "What is the server certificate name (the part of the filename before '.csr.pem', usually the server hostname)? " server_file_name
+    if [ ! -z "$server_file_name" ]; then
+      if [ ! -e "$signing_ca_dir/csr/$server_file_name.csr.pem" ]; then
+        echo "File does not exist"
+        server_file_name=""
+      fi
+    fi
+  done
+
+}
+
 init_ca_directory (){
   if [ -d "$1" ]; then
     rm -rf "$1"
@@ -313,6 +328,65 @@ create_server_cert () {
   chmod 444 "$signing_ca_dir/certs/$server_file_name.cert.pem"
 }
 
+
+generate_server_script () {
+  mkdir "$signing_ca_dir/csr/$server_file_name"
+
+  temp_conf=$(<"$script_dir/server-req.conf")
+  temp_conf="${temp_conf//____orgName____/$org_name}"
+  temp_conf="${temp_conf//____commonName____/$server_name}"
+  echo "$temp_conf" > "$signing_ca_dir/csr/$server_file_name/request.conf"
+
+  temp_script=$(<"$script_dir/csr-script-template.sh")
+  temp_script="${temp_script//____fileName____/$server_file_name}"
+  echo "$temp_script" > "$signing_ca_dir/csr/$server_file_name/request.sh"
+  chmod 744 "$signing_ca_dir/csr/$server_file_name/request.sh"
+
+  temp_readme=$(<"$script_dir/server-script-readme-template.txt")
+  temp_readme="${temp_readme//____fileName____/$server_file_name}"
+  echo "$temp_readme" > "$signing_ca_dir/csr/$server_file_name/README.txt"
+  chmod 444 "$signing_ca_dir/csr/$server_file_name/README.txt"
+
+  i_san=0
+  san_value=
+  for san_value in "${san_dns[@]}"
+  do
+    if [ ! -z "$san_value" ]; then
+      ((i_san++))
+      printf "DNS.$i_san = $san_value \n" >> "$signing_ca_dir/csr/$server_file_name/request.conf"
+    fi
+  done
+
+  i_san=0
+  san_value=
+  for san_value in "${san_ip[@]}"
+  do
+    if [ ! -z "$san_value" ]; then
+      ((i_san++))
+      printf "IP.$i_san = $san_value \n" >> "$signing_ca_dir/csr/$server_file_name/request.conf"
+    fi
+  done
+
+  cp "$signing_ca_dir/certs/ca-chain.cert.pem" "$signing_ca_dir/csr/$server_file_name"
+  cp "$root_ca_dir/certs/root-ca.cert.pem" "$signing_ca_dir/csr/$server_file_name"
+
+  pushd "$signing_ca_dir/csr"
+  tar -czvf "$server_file_name.tar.gz" "$server_file_name"
+  popd
+  rm -rf "$signing_ca_dir/csr/$server_file_name"
+
+}
+
+
+sign_server_csr () {
+  openssl ca -config "$signing_ca_dir/ca.conf" -extensions server_ext -policy policy_server -notext -batch -passin file:<( printf "$signing_ca_password" ) -in "$signing_ca_dir/csr/$server_file_name.csr.pem" -out "$signing_ca_dir/certs/$server_file_name.cert.pem"
+  if [ ! $? -eq 0 ]; then
+    echo "Encountered error and could not continue"
+    exit 1
+  fi
+  chmod 444 "$signing_ca_dir/certs/$server_file_name.cert.pem"
+}
+
 create_client_cert () {
 
   temp_conf=$(<"$script_dir/client-req.conf")
@@ -360,15 +434,15 @@ generate_client_script () {
   temp_conf="${temp_conf//____emailAddress____/$client_email}"
   echo "$temp_conf" > "$signing_ca_dir/csr/$client_file_name/request.conf"
 
-  temp_script=$(<"$script_dir/client-script-template.sh")
-  temp_script="${temp_script//____clientFileName____/$client_file_name}"
+  temp_script=$(<"$script_dir/csr-script-template.sh")
+  temp_script="${temp_script//____fileName____/$client_file_name}"
   echo "$temp_script" > "$signing_ca_dir/csr/$client_file_name/request.sh"
   chmod 744 "$signing_ca_dir/csr/$client_file_name/request.sh"
 
   temp_readme=$(<"$script_dir/client-script-readme-template.txt")
   temp_readme="${temp_readme//____orgName____/$org_name}"
   temp_readme="${temp_readme//____clientName____/$client_name}"
-  temp_readme="${temp_readme//____clientFileName____/$client_file_name}"
+  temp_readme="${temp_readme//____fileName____/$client_file_name}"
   echo "$temp_readme" > "$signing_ca_dir/csr/$client_file_name/README.txt"
   chmod 444 "$signing_ca_dir/csr/$client_file_name/README.txt"
 
@@ -456,7 +530,7 @@ action_top_menu_new () {
 }
 
 action_top_menu () {
-  top_actions=("New client" "New server" "New signing CA" "New client CSR script" "Sign client CSR" "Quit")
+  top_actions=("New client" "New server" "New signing CA" "New client CSR script" "Sign client CSR" "New server CSR script" "Sign server CSR" "Quit")
   PS3="What would you like to do (1-${#top_actions[@]})? "
   select top_action in "${top_actions[@]}"
   do
@@ -540,6 +614,36 @@ action_top_menu () {
       printf "OUTPUT SUMMARY\n\n"
 
       printf "1.  Client certificate: $top_level_dir/$signing_ca_dir/certs/$client_file_name.cert.pem\n"
+      printf "\n******************************************************************************\n"
+      break
+      ;;
+    "New server CSR script")
+      get_org_name
+      get_existing_signing_ca_dir
+      get_server_name
+      get_sans
+      generate_server_script
+
+      printf "\n\n"
+      printf "******************************************************************************\n"
+      printf "OUTPUT SUMMARY\n\n"
+
+      printf "1.  Scripts and files for $server_name: $top_level_dir/$signing_ca_dir/csr/$server_file_name.tar.gz\n"
+      printf "\n******************************************************************************\n"
+      break
+      ;;
+    "Sign server CSR")
+      get_org_name
+      get_existing_signing_ca_dir
+      get_signing_ca_password
+      get_server_csr
+      sign_server_csr
+
+      printf "\n\n"
+      printf "******************************************************************************\n"
+      printf "OUTPUT SUMMARY\n\n"
+
+      printf "1.  Server certificate: $top_level_dir/$signing_ca_dir/certs/$server_file_name.cert.pem\n"
       printf "\n******************************************************************************\n"
       break
       ;;
