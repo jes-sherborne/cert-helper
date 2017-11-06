@@ -156,6 +156,23 @@ get_client_name (){
 
 }
 
+get_client_csr (){
+  client_email=""
+  client_name=""
+  client_file_name=""
+  echo "Make sure the client's CSR (e.g., 'user@example.csr.pem') is in the directory $signing_ca_dir/csr"
+  while [ -z "$client_file_name" ]; do
+    read -p "What is the client certificate name (the part of the filename before '.csr.pem', usually their email address)? " client_file_name
+    if [ ! -z "$client_file_name" ]; then
+      if [ ! -e "$signing_ca_dir/csr/$client_file_name.csr.pem" ]; then
+        echo "File does not exist"
+        client_file_name=""
+      fi
+    fi
+  done
+
+}
+
 init_ca_directory (){
   if [ -d "$1" ]; then
     rm -rf "$1"
@@ -334,6 +351,45 @@ create_client_cert () {
 
 }
 
+generate_client_script () {
+  mkdir "$signing_ca_dir/csr/$client_file_name"
+
+  temp_conf=$(<"$script_dir/client-req.conf")
+  temp_conf="${temp_conf//____orgName____/$org_name}"
+  temp_conf="${temp_conf//____commonName____/$client_name}"
+  temp_conf="${temp_conf//____emailAddress____/$client_email}"
+  echo "$temp_conf" > "$signing_ca_dir/csr/$client_file_name/request.conf"
+
+  temp_script=$(<"$script_dir/client-script-template.sh")
+  temp_script="${temp_script//____clientFileName____/$client_file_name}"
+  echo "$temp_script" > "$signing_ca_dir/csr/$client_file_name/request.sh"
+  chmod 744 "$signing_ca_dir/csr/$client_file_name/request.sh"
+
+  temp_readme=$(<"$script_dir/client-script-readme-template.txt")
+  temp_readme="${temp_readme//____orgName____/$org_name}"
+  temp_readme="${temp_readme//____clientName____/$client_name}"
+  temp_readme="${temp_readme//____clientFileName____/$client_file_name}"
+  echo "$temp_readme" > "$signing_ca_dir/csr/$client_file_name/README.txt"
+  chmod 444 "$signing_ca_dir/csr/$client_file_name/README.txt"
+
+  cp "$signing_ca_dir/certs/ca.cert.pem" "$signing_ca_dir/csr/$client_file_name"
+  cp "$root_ca_dir/certs/root-ca.cert.pem" "$signing_ca_dir/csr/$client_file_name"
+
+  pushd "$signing_ca_dir/csr"
+  tar -czvf "$client_file_name.tar.gz" "$client_file_name"
+  popd
+  rm -rf "$signing_ca_dir/csr/$client_file_name"
+}
+
+sign_client_csr () {
+  openssl ca -config "$signing_ca_dir/ca.conf" -extensions client_ext -policy policy_client -notext -batch -passin file:<( printf "$signing_ca_password" ) -in "$signing_ca_dir/csr/$client_file_name.csr.pem" -out "$signing_ca_dir/certs/$client_file_name.cert.pem"
+  if [ ! $? -eq 0 ]; then
+    echo "Encountered error and could not continue"
+    exit 1
+  fi
+  chmod 444 "$signing_ca_dir/certs/$client_file_name.cert.pem"
+}
+
 action_top_menu_new () {
   printf "It looks like you haven't run cert-helper in this directory before, so it will set up everything for you.\n\n"
   top_actions=("Create files for local testing" "Create files for a production system" "Quit")
@@ -400,7 +456,7 @@ action_top_menu_new () {
 }
 
 action_top_menu () {
-  top_actions=("New client" "New server" "New signing CA" "Quit")
+  top_actions=("New client" "New server" "New signing CA" "New client CSR script" "Sign client CSR" "Quit")
   PS3="What would you like to do (1-${#top_actions[@]})? "
   select top_action in "${top_actions[@]}"
   do
@@ -455,6 +511,35 @@ action_top_menu () {
 
       printf "1.  Signing CA password (keep secret): $signing_ca_password\n"
       printf "2.  Signing CA certificate chain: $top_level_dir/$signing_ca_dir/certs/ca-chain.cert.pem\n"
+      printf "\n******************************************************************************\n"
+      break
+      ;;
+    "New client CSR script")
+      get_org_name
+      get_existing_signing_ca_dir
+      get_client_name
+      generate_client_script
+
+      printf "\n\n"
+      printf "******************************************************************************\n"
+      printf "OUTPUT SUMMARY\n\n"
+
+      printf "1.  Scripts and files for $client_email: $top_level_dir/$signing_ca_dir/csr/$client_file_name.tar.gz\n"
+      printf "\n******************************************************************************\n"
+      break
+      ;;
+    "Sign client CSR")
+      get_org_name
+      get_existing_signing_ca_dir
+      get_signing_ca_password
+      get_client_csr
+      sign_client_csr
+
+      printf "\n\n"
+      printf "******************************************************************************\n"
+      printf "OUTPUT SUMMARY\n\n"
+
+      printf "1.  Client certificate: $top_level_dir/$signing_ca_dir/certs/$client_file_name.cert.pem\n"
       printf "\n******************************************************************************\n"
       break
       ;;
