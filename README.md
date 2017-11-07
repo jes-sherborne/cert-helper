@@ -130,7 +130,7 @@ __To install a client certificate on a Mac:__
 1. Open _Keychain Access_ (found in Applications » Utilities)
 2. Select the _login_ keychain
 3. Drag and drop `signing-ca-1/private/your-email-address.pfx` into the list.
-4. Enter the generated password for the PFX file
+4. Enter the generated password for the PFX file. **Tip** You can paste your password into the dialog by right-clicking and choosing _paste_. The password dialog doesn't allow pasting with CMD+V.
 
 ### Working with server certificates
 
