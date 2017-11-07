@@ -40,6 +40,8 @@ If you are using these certificates in a production system, you should take addi
 
 Move the entire `root-ca` directory to its own encrypted storage. Ideally, you should keep this offline. You will only use it if you need to create another signing CA (which will not happen often, if at all), so it will not inconvenience you to keep it offline.
 
+The one file you should keep handy is `root-ca.cert.pem`. This file isn't secret (you can send it to anyone you want), and you will need it on every system that needs to trust the certificates you create.
+
 ## Creating additional certificates
 
 After you have used cert-helper for the first time, you can use it to create additional certificates as needed. As before, just run:
